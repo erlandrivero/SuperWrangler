@@ -166,6 +166,5 @@ export const cleanAndMerge = async (dataset1: any[], dataset2: any[], onProgress
   onProgress({ key: 'missingValuesFilled', value: filledCount }); await yieldToMain();
 
   onProgress({ key: 'finalRows', value: mergedData.length }); await yieldToMain();
-  onProgress({ key: 'finalColumns', value: mergedData.length > 0 ? Object.keys(mergedData[0]).length : 0 }); await yieldToMain();
-  return { data: mergedData };
+    return { data: mergedData };
 };

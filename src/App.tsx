@@ -64,6 +64,7 @@ function App() {
 
       const { data: processedData } = await cleanAndMerge(data1, data2, handleProgress);
       const engineeredData = engineerFeatures(processedData);
+      handleProgress({ key: 'finalColumns', value: engineeredData.length > 0 ? Object.keys(engineeredData[0]).length : 0 });
 
       setCleanedData(engineeredData);
       setSuccess(`Successfully loaded and processed data. Found ${engineeredData.length} rows.`);
