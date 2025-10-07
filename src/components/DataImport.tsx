@@ -49,13 +49,14 @@ const DataImport = ({ onDataLoaded, loading, id1, id2, setId1, setId2 }: {
       </div>
 
       {mode === 'openml' ? (
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
           <input
             type="text"
             value={id1}
             onChange={(e) => setId1(e.target.value)}
             placeholder="Dataset 1 ID"
             disabled={loading}
+            style={{ width: '100%' }}
           />
           <input
             type="text"
@@ -63,15 +64,16 @@ const DataImport = ({ onDataLoaded, loading, id1, id2, setId1, setId2 }: {
             onChange={(e) => setId2(e.target.value)}
             placeholder="Dataset 2 ID"
             disabled={loading}
+            style={{ width: '100%' }}
           />
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-          <label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <label className="button-like">
             {fileName1 || 'Select Dataset 1 CSV'}
             <input type="file" accept=".csv" onChange={(e) => handleFileChange(e.target.files![0], 1)} style={{ display: 'none' }} />
           </label>
-          <label>
+          <label className="button-like">
             {fileName2 || 'Select Dataset 2 CSV'}
             <input type="file" accept=".csv" onChange={(e) => handleFileChange(e.target.files![0], 2)} style={{ display: 'none' }} />
           </label>

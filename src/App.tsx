@@ -27,6 +27,8 @@ function App() {
     setError(null);
     setSuccess(null);
     setCleaningSummary({});
+    setId1('');
+    setId2('');
   };
 
   const summaryItems = [
