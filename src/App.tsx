@@ -18,8 +18,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [cleaningSummary, setCleaningSummary] = useState<any>({});
-  const [id1, setId1] = useState('43406');
-  const [id2, setId2] = useState('44136');
+  const [id1, setId1] = useState('');
+  const [id2, setId2] = useState('');
 
   const handleRefresh = () => {
     setCleanedData([]);
