@@ -1,17 +1,22 @@
-# Wine Data Wrangler
+# 🦸 SuperWrangler - Universal Data Cleaning Platform
 
-A professional web application for cleaning, analyzing, and visualizing wine quality datasets from OpenML. This tool provides automated data preprocessing, feature engineering, and comprehensive analysis capabilities.
+A professional web application for cleaning, analyzing, and visualizing **ANY dataset** from OpenML or CSV files. This tool provides automated data preprocessing, intelligent feature detection, and comprehensive analysis capabilities that work with both single and dual datasets.
 
-## Features
+## ✨ Key Features
 
-✅ **Automated Data Loading** - Enter OpenML dataset IDs and load wine quality data
+✅ **Universal Dataset Support** - Works with ANY dataset, not just wine data
+✅ **Single & Dual Dataset Processing** - Load one or two datasets for comparison/merging
+✅ **Smart Feature Detection** - Automatically detects wine-specific columns and adapts processing
+✅ **Column Analysis** - Analyzes all columns and provides encoding recommendations
+✅ **Balance Check** - Auto-detects target column and checks class balance
 ✅ **Intelligent Data Cleaning** - Automatic normalization, duplicate removal, and missing value handling
-✅ **Feature Engineering** - Creates 6 new engineered features for better analysis
-✅ **Interactive Visualizations** - 4 professional charts including quality distribution and correlations
+✅ **Conditional Feature Engineering** - Creates domain-specific features when applicable
+✅ **Smart Binning** - Bins columns only when appropriate
+✅ **Interactive Visualizations** - Dynamic charts that adapt to your data
 ✅ **Data Dictionary** - Auto-generated documentation with statistics for all columns
-✅ **Export Capabilities** - Download cleaned data as CSV with full processing report
-✅ **Professional UI** - Clean, responsive design that works on all devices
-✅ **Error Handling** - Comprehensive error messages and loading states
+✅ **Export Capabilities** - Download cleaned data, analysis reports, and processing logs
+✅ **Professional UI** - Clean, responsive design with clear visual feedback
+✅ **Comprehensive Logging** - Track every step of the data processing pipeline
 
 ## Technologies Used
 
@@ -51,10 +56,19 @@ npm run dev
 
 ### Usage
 
-1. **Load Data**: Enter OpenML dataset IDs (default: 43406 for red wine, 44136 for white wine)
-2. **Automatic Processing**: Watch as the app cleans and merges your data
-3. **Explore Results**: View the cleaned data table, visualizations, and data dictionary
-4. **Export Results**: Download your processed data as CSV
+#### Single Dataset Mode
+1. **Load Data**: Enter one OpenML dataset ID (e.g., 43406) or upload a CSV file
+2. **Automatic Processing**: Watch as the app analyzes and cleans your data
+3. **Review Analysis**: Check column analysis and balance check results
+4. **Explore Results**: View cleaned data, visualizations, and data dictionary
+5. **Export Results**: Download processed data and analysis reports
+
+#### Dual Dataset Mode (Merge)
+1. **Load Data**: Enter two OpenML dataset IDs (e.g., 43406 and 44136) or upload two CSV files
+2. **Automatic Merging**: App finds common columns and merges datasets
+3. **Review Analysis**: Check column analysis and balance check results
+4. **Explore Results**: View merged data, visualizations, and data dictionary
+5. **Export Results**: Download processed data and analysis reports
 
 ## Project Structure
 
@@ -81,26 +95,56 @@ wine-wrangler/
 
 ## Data Processing Pipeline
 
-The app implements a comprehensive 7-step cleaning process:
+The app implements an intelligent, adaptive cleaning process:
 
-1. **Column Normalization** - Standardizes column names
-2. **Type Column Addition** - Adds wine type classification
-3. **Common Column Identification** - Finds overlapping columns
-4. **Dataset Alignment** - Ensures consistent column structure
-5. **Numeric Conversion** - Converts all values to proper types
-6. **Duplicate Removal** - Eliminates exact duplicate rows
-7. **Missing Value Imputation** - Fills gaps with column medians
+### Core Steps (Always Applied)
+1. **Column Normalization** - Standardizes column names to lowercase with underscores
+2. **Column Analysis** - Analyzes all columns for encoding recommendations
+3. **Numeric Conversion** - Converts all numeric columns to proper types
+4. **Duplicate Removal** - Eliminates exact duplicate rows
+5. **Missing Value Imputation** - Fills gaps with column medians
 
-## Feature Engineering
+### Conditional Steps (Applied When Applicable)
+6. **Feature Engineering** - Creates domain-specific features (e.g., wine-specific ratios)
+7. **Smart Binning** - Bins appropriate columns (e.g., quality, alcohol)
+8. **Balance Check** - Auto-detects target column and checks class balance
 
-The app creates 6 new features automatically:
+### Dual Dataset Mode Additional Steps
+- **Common Column Identification** - Finds overlapping columns between datasets
+- **Dataset Alignment** - Ensures consistent column structure
+- **Type Column Addition** - Adds source classification (e.g., red/white wine)
 
+## Intelligent Feature Detection
+
+SuperWrangler adapts its processing based on your data:
+
+### Column Analysis
+- Analyzes every column for data type and cardinality
+- Provides encoding recommendations (Keep, Review, Drop)
+- Identifies ID columns and high-cardinality categoricals
+- Suggests appropriate encoding strategies
+
+### Balance Check
+- Auto-detects target column using common names or lowest cardinality
+- Calculates class distribution and imbalance ratio
+- Provides color-coded status (Balanced, Slightly Imbalanced, Imbalanced, Severely Imbalanced)
+- Recommends appropriate techniques (SMOTE, class weights, stratified sampling)
+
+### Conditional Feature Engineering
+When wine-specific columns are detected, creates 6 new features:
 - `so2_ratio` - Sulfur dioxide ratio analysis
 - `chlorides_to_sulphates` - Chemical balance indicator
 - `total_acidity_proxy` - Combined acidity measure
 - `alcohol_x_sulphates` - Interaction feature
 - `density_centered` - Normalized density values
 - `high_acidity_flag` - Binary acidity classification
+
+When wine columns are NOT found, gracefully skips with clear user feedback.
+
+### Smart Binning
+- Bins `quality` column into low/medium/high (if present)
+- Bins `alcohol` column into very_low/low/medium/high (if present)
+- Skips binning if columns not found
 
 ## Visualizations
 
