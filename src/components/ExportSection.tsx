@@ -76,7 +76,7 @@ const ExportSection = ({ data, summary, processingLogs }: ExportSectionProps) =>
         >
           <strong>📊 Export Data (CSV)</strong>
           <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.25rem' }}>
-            Cleaned dataset with all {data.length > 0 ? Object.keys(data[0]).length : 21} columns
+            Cleaned dataset with all {data.length > 0 ? Object.keys(data[0]).length : 0} columns
           </div>
         </button>
 
@@ -141,7 +141,7 @@ const ExportSection = ({ data, summary, processingLogs }: ExportSectionProps) =>
           Download everything in one ZIP file including:
         </p>
         <ul style={{ margin: '0 0 1rem 0', paddingLeft: '1.5rem', color: '#065f46', fontSize: '0.875rem' }}>
-          <li>Cleaned data CSV ({data.length} rows × {data.length > 0 ? Object.keys(data[0]).length : 21} columns)</li>
+          <li>Cleaned data CSV ({data.length} rows × {data.length > 0 ? Object.keys(data[0]).length : 0} columns)</li>
           <li>Data dictionary (Markdown & CSV)</li>
           <li>Processing log with timestamps</li>
           <li>Summary report with all metrics</li>
