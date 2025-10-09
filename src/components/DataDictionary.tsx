@@ -14,26 +14,56 @@ const DataDictionary = ({ data }: { data: any[] }) => {
   // Get all column names from the data
   const allColumns = Object.keys(data[0] || {});
   
-  // Known engineered feature patterns
-  const engineeredFeatures = ['so2_ratio', 'chlorides_to_sulphates', 'total_acidity_proxy', 'alcohol_x_sulphates', 'density_centered', 'high_acidity_flag'];
+  // Detect binned features
   const binnedFeatures = allColumns.filter(col => col.endsWith('_bin'));
   
-  // Dynamically determine column source
+  // Dynamically determine column source based on naming patterns
   const getColumnSource = (column: string): string => {
-    if (engineeredFeatures.includes(column)) return 'Engineered';
+    // Binned features end with _bin
     if (binnedFeatures.includes(column)) return 'Binned';
+    
+    // Engineered features follow these patterns:
+    // - Ratio features: col1_to_col2_ratio
+    // - Interaction features: col1_x_col2
+    // - Centered features: col_centered
+    // - Binary flags: col_high_flag or col_low_flag
+    if (column.includes('_to_') && column.endsWith('_ratio')) return 'Engineered';
+    if (column.includes('_x_') && !column.endsWith('_bin')) return 'Engineered';
+    if (column.endsWith('_centered')) return 'Engineered';
+    if (column.endsWith('_high_flag') || column.endsWith('_low_flag')) return 'Engineered';
+    
     return 'Original';
   };
   
   // Dynamically generate description
   const getColumnDescription = (column: string): string => {
-    // Engineered features
-    if (column === 'so2_ratio') return 'Ratio of free to total SO2';
-    if (column === 'chlorides_to_sulphates') return 'Chlorides to sulphates ratio';
-    if (column === 'total_acidity_proxy') return 'Combined acidity measure';
-    if (column === 'alcohol_x_sulphates') return 'Interaction feature';
-    if (column === 'density_centered') return 'Normalized density values';
-    if (column === 'high_acidity_flag') return 'Binary acidity classification';
+    // Ratio features
+    if (column.includes('_to_') && column.endsWith('_ratio')) {
+      const parts = column.replace('_ratio', '').split('_to_');
+      return `Ratio of ${parts[0].replace(/_/g, ' ')} to ${parts[1].replace(/_/g, ' ')}`;
+    }
+    
+    // Interaction features
+    if (column.includes('_x_')) {
+      const parts = column.split('_x_');
+      return `Interaction between ${parts[0].replace(/_/g, ' ')} and ${parts[1].replace(/_/g, ' ')}`;
+    }
+    
+    // Centered features
+    if (column.endsWith('_centered')) {
+      const baseColumn = column.replace('_centered', '');
+      return `Median-centered ${baseColumn.replace(/_/g, ' ')}`;
+    }
+    
+    // Binary flags
+    if (column.endsWith('_high_flag')) {
+      const baseColumn = column.replace('_high_flag', '');
+      return `Binary flag: ${baseColumn.replace(/_/g, ' ')} above median`;
+    }
+    if (column.endsWith('_low_flag')) {
+      const baseColumn = column.replace('_low_flag', '');
+      return `Binary flag: ${baseColumn.replace(/_/g, ' ')} below median`;
+    }
     
     // Binned features
     if (column.endsWith('_bin')) {
@@ -47,14 +77,43 @@ const DataDictionary = ({ data }: { data: any[] }) => {
   
   // Dynamically generate formula for engineered/binned columns
   const getColumnFormula = (column: string): string => {
-    if (column === 'so2_ratio') return 'free_sulfur_dioxide / (total_sulfur_dioxide + 1e-9)';
-    if (column === 'chlorides_to_sulphates') return 'chlorides / (sulphates + 1e-9)';
-    if (column === 'total_acidity_proxy') return 'fixed_acidity + volatile_acidity + citric_acid';
-    if (column === 'alcohol_x_sulphates') return 'alcohol × sulphates';
-    if (column === 'density_centered') return 'density - median(density)';
-    if (column === 'high_acidity_flag') return '1 if fixed_acidity > median, else 0';
-    if (column === 'quality_bin') return 'low (≤5), medium (5-6), high (>6)';
-    if (column === 'alcohol_bin') return 'very_low (≤10), low (10-12), medium (12-14), high (>14)';
+    // Ratio features
+    if (column.includes('_to_') && column.endsWith('_ratio')) {
+      const parts = column.replace('_ratio', '').split('_to_');
+      return `${parts[0]} / (${parts[1]} + 1e-9)`;
+    }
+    
+    // Interaction features
+    if (column.includes('_x_')) {
+      const parts = column.split('_x_');
+      return `${parts[0]} × ${parts[1]}`;
+    }
+    
+    // Centered features
+    if (column.endsWith('_centered')) {
+      const baseColumn = column.replace('_centered', '');
+      return `${baseColumn} - median(${baseColumn})`;
+    }
+    
+    // Binary flags
+    if (column.endsWith('_high_flag')) {
+      const baseColumn = column.replace('_high_flag', '');
+      return `1 if ${baseColumn} > median, else 0`;
+    }
+    if (column.endsWith('_low_flag')) {
+      const baseColumn = column.replace('_low_flag', '');
+      return `1 if ${baseColumn} < median, else 0`;
+    }
+    
+    // Binned features - show actual bin values from the data
+    if (column.endsWith('_bin')) {
+      const uniqueValues = [...new Set(data.map(row => row[column]))].filter(v => v !== null && v !== undefined);
+      if (uniqueValues.length > 0 && uniqueValues.length <= 10) {
+        return uniqueValues.sort().join(', ');
+      }
+      return 'Categorical bins';
+    }
+    
     return '-';
   };
 

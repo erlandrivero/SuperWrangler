@@ -40,6 +40,11 @@ function App() {
   const [id1, setId1] = useState('');
   const [id2, setId2] = useState('');
   const [resetKey, setResetKey] = useState(0);
+  const [useFeatureEngineering, setUseFeatureEngineering] = useState(true);
+  const [engineeredColumns, setEngineeredColumns] = useState<string[]>([]);
+  const [includeEngineeredColumns, setIncludeEngineeredColumns] = useState(true);
+  const [fullDataWithEngineered, setFullDataWithEngineered] = useState<any[]>([]);
+  const [dataVersion, setDataVersion] = useState(0);
 
   const handleRefresh = () => {
     setCleanedData([]);
@@ -52,7 +57,56 @@ function App() {
     setBalanceReport(null);
     setId1('');
     setId2('');
+    setEngineeredColumns([]);
+    setIncludeEngineeredColumns(true);
+    setFullDataWithEngineered([]);
+    setDataVersion(0);
     setResetKey(prev => prev + 1); // Force DataImport to remount
+  };
+
+  // Toggle handler for engineered columns
+  const handleToggleEngineeredColumns = (include: boolean) => {
+    setIncludeEngineeredColumns(include);
+    
+    if (fullDataWithEngineered.length === 0) {
+      return;
+    }
+    
+    let updatedData;
+    if (include) {
+      // Include engineered columns - restore full data
+      updatedData = fullDataWithEngineered;
+    } else {
+      // Exclude engineered columns - filter them out
+      updatedData = fullDataWithEngineered.map(row => {
+        const newRow: any = {};
+        // Only copy non-engineered columns
+        Object.keys(row).forEach(key => {
+          if (!engineeredColumns.includes(key)) {
+            newRow[key] = row[key];
+          }
+        });
+        return newRow;
+      });
+    }
+    
+    setCleanedData([...updatedData]); // Create new array reference
+    setDataVersion(prev => prev + 1); // Force re-render
+    
+    // Update column analyses with the new data
+    const newAnalyses = analyzeColumns(updatedData);
+    setColumnAnalyses(newAnalyses);
+    
+    // Update balance report with the new data
+    const newBalance = checkBalance(updatedData);
+    setBalanceReport(newBalance);
+    
+    // Update summary with new column count and engineered features count
+    setCleaningSummary((prev: any) => ({
+      ...prev,
+      finalColumns: updatedData.length > 0 ? Object.keys(updatedData[0]).length : 0,
+      engineeredFeatures: include ? engineeredColumns.length : 0
+    }));
   };
 
   // Dynamic summary items based on processing mode
@@ -65,6 +119,7 @@ function App() {
         { key: 'commonColumns', title: 'Total Columns' },
         { key: 'duplicatesRemoved', title: 'Duplicates Removed' },
         { key: 'missingValuesFilled', title: 'Missing Values Filled' },
+        { key: 'engineeredFeatures', title: 'Engineered Features' },
         { key: 'binnedColumnsCreated', title: 'Binned Columns' },
         { key: 'finalRows', title: 'Final Rows' },
         { key: 'finalColumns', title: 'Final Columns' },
@@ -76,12 +131,14 @@ function App() {
         { key: 'commonColumns', title: 'Common Columns' },
         { key: 'duplicatesRemoved', title: 'Duplicates Removed' },
         { key: 'missingValuesFilled', title: 'Missing Values Filled' },
+        { key: 'engineeredFeatures', title: 'Engineered Features' },
         { key: 'binnedColumnsCreated', title: 'Binned Columns' },
         { key: 'finalRows', title: 'Final Rows' },
         { key: 'finalColumns', title: 'Final Columns' },
       ];
     }
   };
+
 
   const handleDataLoaded = async (source: 'openml' | 'csv', data: any) => {
     setLoading(true);
@@ -173,10 +230,6 @@ function App() {
       }
       
       // Check class balance on ORIGINAL cleaned data (before any transformations)
-      console.log('Checking balance on processedData. First 5 rows of type column:', 
-                  processedData.slice(0, 5).map(r => r.type));
-      console.log('Unique type values:', [...new Set(processedData.map(r => r.type))]);
-      
       const balanceCheck = checkBalance(processedData);
       if (balanceCheck) {
         setBalanceReport(balanceCheck);
@@ -185,20 +238,31 @@ function App() {
         });
       }
       
-      const featureResult = engineerFeatures(processedData);
-      const engineeredData = featureResult.data;
+      let engineeredData = processedData;
       
-      if (featureResult.featuresCreated.length > 0) {
-        const featureList = featureResult.featuresCreated.slice(0, 5).join(', ') + 
-                           (featureResult.featuresCreated.length > 5 ? `, ... (${featureResult.featuresCreated.length - 5} more)` : '');
-        addLog('Engineered Features', `Created ${featureResult.featuresCreated.length} features automatically: ${featureList}`, { after: `${featureResult.featuresCreated.length} features created` });
-        handleProgress({ key: 'engineeredFeatures', value: featureResult.featuresCreated.length });
-        handleProgress({ key: 'featureType', value: featureResult.featureType || 'generic' });
-      } else if (featureResult.skippedReason) {
-        addLog('Feature Engineering Skipped', featureResult.skippedReason, { after: 'No features created' });
+      if (useFeatureEngineering) {
+        const featureResult = engineerFeatures(processedData);
+        engineeredData = featureResult.data;
+        
+        if (featureResult.featuresCreated.length > 0) {
+          setEngineeredColumns(featureResult.featuresCreated);
+          const featureList = featureResult.featuresCreated.slice(0, 5).join(', ') + 
+                             (featureResult.featuresCreated.length > 5 ? `, ... (${featureResult.featuresCreated.length - 5} more)` : '');
+          addLog('Engineered Features', `Created ${featureResult.featuresCreated.length} features automatically: ${featureList}`, { after: `${featureResult.featuresCreated.length} features created` });
+          handleProgress({ key: 'engineeredFeatures', value: featureResult.featuresCreated.length });
+          handleProgress({ key: 'featureType', value: featureResult.featureType || 'generic' });
+        } else if (featureResult.skippedReason) {
+          setEngineeredColumns([]);
+          addLog('Feature Engineering Skipped', featureResult.skippedReason, { after: 'No features created' });
+          handleProgress({ key: 'engineeredFeatures', value: 0 });
+          handleProgress({ key: 'featureType', value: 'none' });
+          handleProgress({ key: 'featureSkipReason', value: featureResult.skippedReason });
+        }
+      } else {
+        setEngineeredColumns([]);
+        addLog('Feature Engineering Skipped', 'Feature engineering was disabled by the user.', { after: 'No features created' });
         handleProgress({ key: 'engineeredFeatures', value: 0 });
         handleProgress({ key: 'featureType', value: 'none' });
-        handleProgress({ key: 'featureSkipReason', value: featureResult.skippedReason });
       }
       
       // Encode categorical columns
@@ -245,9 +309,16 @@ function App() {
         after: `${binnedData.length} rows × ${Object.keys(binnedData[0] || {}).length} columns` 
       });
 
+      // Store full data with engineered columns
+      setFullDataWithEngineered(binnedData);
       setCleanedData(binnedData);
+      
+      // Calculate initial data stats for success message
+      const initialRows = isSingleDataset ? data1.length : (data1.length + data2.length);
+      const initialColumns = data1.length > 0 ? Object.keys(data1[0]).length : 0;
       const mode = isSingleDataset ? 'Single dataset' : 'Merged datasets';
-      setSuccess(`Successfully loaded and processed data (${mode}). Found ${binnedData.length} rows with ${Object.keys(binnedData[0] || {}).length} columns.`);
+      setSuccess(`Successfully loaded and processed data (${mode}). Loaded ${initialRows} rows with ${initialColumns} columns.`);
+
     } catch (err) {
       console.error('Error during data processing:', err);
       
@@ -294,6 +365,38 @@ function App() {
       <main>
         <div className="card">
           <h2>📥 Data Import</h2>
+          <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', backgroundColor: '#ecfdf5', borderRadius: '4px', border: '1px solid #10b981' }}>
+            <input
+              type="checkbox"
+              id="feature-engineering-toggle"
+              checked={useFeatureEngineering}
+              onChange={(e) => setUseFeatureEngineering(e.target.checked)}
+              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            <label htmlFor="feature-engineering-toggle" style={{ fontWeight: '500', cursor: 'pointer', flex: 1 }}>
+              Enable Automatic Feature Engineering
+            </label>
+            <span style={{ fontSize: '0.875rem', color: '#059669' }}>
+              {useFeatureEngineering ? '✓ Enabled' : '✗ Disabled'}
+            </span>
+          </div>
+          {engineeredColumns.length > 0 && (
+            <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', backgroundColor: '#ecfdf5', borderRadius: '4px', border: '1px solid #10b981' }}>
+              <input
+                type="checkbox"
+                id="include-engineered-toggle"
+                checked={includeEngineeredColumns}
+                onChange={(e) => handleToggleEngineeredColumns(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              <label htmlFor="include-engineered-toggle" style={{ fontWeight: '500', cursor: 'pointer', flex: 1 }}>
+                Include Engineered Columns ({engineeredColumns.length} columns)
+              </label>
+              <span style={{ fontSize: '0.875rem', color: '#059669' }}>
+                {includeEngineeredColumns ? '✓ Included' : '✗ Excluded'}
+              </span>
+            </div>
+          )}
           <DataImport 
             key={resetKey}
             onDataLoaded={handleDataLoaded} 
@@ -307,6 +410,7 @@ function App() {
           {error && <ErrorMessage message={error} />}
           {success && <SuccessMessage message={success} />}
         </div>
+
 
         {columnAnalyses.length > 0 && (
           <div className="card">
@@ -384,17 +488,17 @@ function App() {
 
         <div className="card">
           <h2>📊 Data Preview</h2>
-          <DataTable data={cleanedData} />
+          <DataTable key={`table-${dataVersion}`} data={cleanedData} />
         </div>
 
         <div className="card">
           <h2>📊 Visualizations</h2>
-          <Visualizations data={cleanedData} />
+          <Visualizations key={`viz-${dataVersion}`} data={cleanedData} />
         </div>
 
         <div className="card">
           <h2>📖 Data Dictionary</h2>
-          <DataDictionary data={cleanedData} />
+          <DataDictionary key={`dict-${dataVersion}`} data={cleanedData} />
         </div>
 
         <div className="card">
