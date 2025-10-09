@@ -45,7 +45,7 @@ function App() {
   const [id1, setId1] = useState('');
   const [id2, setId2] = useState('');
   const [resetKey, setResetKey] = useState(0);
-  const [useFeatureEngineering, setUseFeatureEngineering] = useState(true);
+  const [useFeatureEngineering, setUseFeatureEngineering] = useState(false);
   const [engineeredColumns, setEngineeredColumns] = useState<string[]>([]);
   const [includeEngineeredColumns, setIncludeEngineeredColumns] = useState(true);
   const [fullDataWithEngineered, setFullDataWithEngineered] = useState<any[]>([]);

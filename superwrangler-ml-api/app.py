@@ -3,7 +3,11 @@ from flask_cors import CORS
 from ml_engine import train_all_models
 
 app = Flask(__name__)
-CORS(app)  # Allow requests from SuperWrangler frontend
+# Allow requests from SuperWrangler frontend with specific CORS settings
+CORS(app, resources={r"/api/*": {"origins": ["https://superwrangler.netlify.app", "http://localhost:3000"]}}, 
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "OPTIONS"])
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
