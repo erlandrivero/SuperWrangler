@@ -6,15 +6,16 @@ interface ExportSectionProps {
   data: any[];
   summary: any;
   processingLogs: any[];
+  mlResults?: any;
 }
 
-const ExportSection = ({ data, summary, processingLogs }: ExportSectionProps) => {
+const ExportSection = ({ data, summary, processingLogs, mlResults }: ExportSectionProps) => {
   const [exporting, setExporting] = useState(false);
 
   const handleExportData = () => {
     if (data.length > 0) {
       const timestamp = new Date().toISOString().slice(0, 10);
-      exportToCsv(data, `wine_data_cleaned_${timestamp}.csv`);
+      exportToCsv(data, `cleaned_data_${timestamp}.csv`);
     }
   };
 
@@ -46,7 +47,7 @@ const ExportSection = ({ data, summary, processingLogs }: ExportSectionProps) =>
     setExporting(true);
     try {
       const stats = calculateColumnStats(data);
-      await exportCompletePackage(data, stats, summary, processingLogs);
+      await exportCompletePackage(data, stats, summary, processingLogs, mlResults);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to create export package. Please try again.');
@@ -142,9 +143,12 @@ const ExportSection = ({ data, summary, processingLogs }: ExportSectionProps) =>
         </p>
         <ul style={{ margin: '0 0 1rem 0', paddingLeft: '1.5rem', color: '#065f46', fontSize: '0.875rem' }}>
           <li>Cleaned data CSV ({data.length} rows × {data.length > 0 ? Object.keys(data[0]).length : 0} columns)</li>
-          <li>Data dictionary (Markdown & CSV)</li>
+          <li>Data dictionary (Markdown format)</li>
+          <li>Data dictionary (CSV format)</li>
           <li>Processing log with timestamps</li>
           <li>Summary report with all metrics</li>
+          {mlResults && <li>ML results CSV ({mlResults.results.length} algorithms)</li>}
+          {mlResults && <li>ML results detailed report</li>}
           <li>README file</li>
         </ul>
         <button 

@@ -142,7 +142,7 @@ export const engineerFeatures = (data: any[]): {
   data: any[], 
   featuresCreated: string[],
   skippedReason?: string,
-  featureType?: 'wine-specific' | 'generic' | 'none'
+  featureType?: 'dataset-specific' | 'generic' | 'none'
 } => {
   if (!data || data.length === 0) {
     return { data, featuresCreated: [], skippedReason: 'No data to process', featureType: 'none' };

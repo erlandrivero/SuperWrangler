@@ -83,31 +83,119 @@ export function checkBalance(data: any[], targetColumn?: string): BalanceReport 
   if (!detectedColumn) {
     const columns = Object.keys(data[0]);
     
-    // Look for common target column names
-    const targetNames = ['target', 'label', 'class', 'churn', 'quality', 'outcome', 'y'];
+    // Look for common target column names (prioritize these)
+    // Order matters - more specific names first
+    const targetNames = ['quality', 'target', 'label', 'class', 'churn', 'outcome', 'classification', 'category', 'type', 'y'];
+    
+    // First, try exact matches (case-insensitive)
     detectedColumn = columns.find(col => 
-      targetNames.some(name => col.toLowerCase().includes(name))
+      targetNames.some(name => col.toLowerCase() === name)
     );
     
-    // If not found, find column with lowest unique count (likely categorical target)
+    // If no exact match, try partial matches
     if (!detectedColumn) {
-      const columnStats = columns.map(col => ({
-        column: col,
-        uniqueCount: new Set(data.map(row => row[col])).size
-      }));
+      detectedColumn = columns.find(col => 
+        targetNames.some(name => col.toLowerCase().includes(name))
+      );
+    }
+    
+    // Log if found by name
+    if (detectedColumn) {
+      console.log(`✓ Auto-detected target column by name: "${detectedColumn}"`);
+    }
+    
+    // If not found, use robust statistical detection
+    if (!detectedColumn) {
+      const columnStats = columns.map(col => {
+        const values = data.map(row => row[col]);
+        const uniqueValues = Array.from(new Set(values));
+        const uniqueCount = uniqueValues.length;
+        
+        // Calculate various statistics
+        const numericValues = values.filter(v => !isNaN(Number(v))).map(Number);
+        const integerCount = numericValues.filter(v => Number.isInteger(v)).length;
+        const hasDecimals = numericValues.some(v => !Number.isInteger(v));
+        
+        // Check if values look like IDs (sequential, unique for most rows)
+        const isLikelyID = uniqueCount > data.length * 0.9 || 
+                          col.toLowerCase().includes('id') ||
+                          col.toLowerCase().includes('index');
+        
+        // Check value range (continuous variables often have wide ranges)
+        const min = Math.min(...numericValues);
+        const max = Math.max(...numericValues);
+        const range = max - min;
+        const avgGap = range / uniqueCount;
+        
+        // Continuous variables have small average gaps between unique values
+        const isContinuous = hasDecimals && avgGap < 1 && uniqueCount > 20;
+        
+        // Calculate a "categorical score" (higher = more likely to be categorical target)
+        let categoricalScore = 0;
+        
+        // Prefer 2-20 unique values (classification sweet spot)
+        if (uniqueCount >= 2 && uniqueCount <= 20) categoricalScore += 100;
+        else if (uniqueCount > 20 && uniqueCount <= 50) categoricalScore += 20;
+        
+        // Prefer integer values
+        if (integerCount === numericValues.length) categoricalScore += 50;
+        else if (integerCount > numericValues.length * 0.9) categoricalScore += 25;
+        
+        // Penalize ID-like columns
+        if (isLikelyID) categoricalScore -= 200;
+        
+        // Penalize continuous variables
+        if (isContinuous) categoricalScore -= 150;
+        
+        // Prefer columns with balanced distribution
+        const valueCounts = uniqueValues.map(uv => values.filter(v => v === uv).length);
+        const maxCount = Math.max(...valueCounts);
+        const minCount = Math.min(...valueCounts);
+        const balanceRatio = minCount / maxCount;
+        if (balanceRatio > 0.1) categoricalScore += 30; // Reasonably balanced
+        
+        // Prefer columns that are not the first or last (often IDs or timestamps)
+        const colIndex = columns.indexOf(col);
+        if (colIndex > 0 && colIndex < columns.length - 1) categoricalScore += 10;
+        
+        return {
+          column: col,
+          uniqueCount,
+          values: uniqueValues.slice(0, 20),
+          categoricalScore,
+          isLikelyID,
+          isContinuous,
+          hasDecimals
+        };
+      });
       
-      // Filter to columns with reasonable number of classes (2-20)
-      const candidates = columnStats.filter(s => s.uniqueCount >= 2 && s.uniqueCount <= 20);
+      // Sort by categorical score (highest first)
+      columnStats.sort((a, b) => b.categoricalScore - a.categoricalScore);
+      
+      // Filter to only positive scores
+      const candidates = columnStats.filter(s => s.categoricalScore > 0);
       
       if (candidates.length > 0) {
-        // Sort by unique count and pick the one with fewest unique values
-        candidates.sort((a, b) => a.uniqueCount - b.uniqueCount);
         detectedColumn = candidates[0].column;
+        console.log(`✓ Auto-detected target column: "${detectedColumn}" (${candidates[0].uniqueCount} classes, score: ${candidates[0].categoricalScore})`);
+        console.log(`  Other candidates: ${candidates.slice(1, 4).map(c => `${c.column}(${c.uniqueCount}, score:${c.categoricalScore})`).join(', ')}`);
+        
+        // Warn if score is low
+        if (candidates[0].categoricalScore < 50) {
+          console.warn(`⚠️ Low confidence in target detection. Consider manually specifying the target column.`);
+        }
+      } else {
+        // No good candidates found
+        console.warn(`⚠️ No suitable target column found. Dataset may not be suitable for classification.`);
+        console.log(`  All columns: ${columnStats.map(c => `${c.column}(${c.uniqueCount}, ${c.isContinuous ? 'continuous' : 'discrete'})`).join(', ')}`);
       }
     }
   }
   
-  if (!detectedColumn) return null;
+  if (!detectedColumn) {
+    console.error('❌ Could not detect target column. Dataset may not be suitable for classification.');
+    return null;
+  }
   
   // Count values for each class
   const classCounts: { [key: string]: number } = {};

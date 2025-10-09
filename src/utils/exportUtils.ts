@@ -86,7 +86,8 @@ export const exportCompletePackage = async (
   data: any[], 
   dataDictionary: any[], 
   summary: any,
-  processingLog: any[]
+  processingLog: any[],
+  mlResults?: any
 ) => {
   const zip = new JSZip();
   const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
@@ -127,7 +128,50 @@ export const exportCompletePackage = async (
   const summaryReport = generateSummaryReport(data, summary);
   zip.file('summary_report.txt', summaryReport);
   
-  // 6. README
+  // 6. ML Results (if available)
+  if (mlResults && mlResults.results) {
+    // ML Results CSV
+    const mlResultsCsv = Papa.unparse(mlResults.results.map((r: any) => ({
+      Algorithm: r.algorithm,
+      Accuracy: r.accuracy.toFixed(4),
+      Precision: r.precision.toFixed(4),
+      Recall: r.recall.toFixed(4),
+      F1_Score: r.f1Score.toFixed(4),
+      ROC_AUC: r.rocAuc?.toFixed(4) || 'N/A',
+      CV_F1_Mean: r.cvF1Mean.toFixed(4),
+      CV_F1_Std: r.cvF1Std.toFixed(4),
+      Training_Time_ms: r.trainingTime,
+      Prediction_Time_ms: r.predictionTime
+    })));
+    zip.file('ml_results.csv', mlResultsCsv);
+    
+    // ML Results detailed report
+    let mlReport = `MACHINE LEARNING RESULTS\n`;
+    mlReport += `${'='.repeat(50)}\n\n`;
+    mlReport += `Training Mode: ${mlResults.mode}\n`;
+    mlReport += `Target Column: ${mlResults.targetColumn}\n`;
+    mlReport += `Algorithms Trained: ${mlResults.results.length}\n`;
+    mlReport += `Total Training Time: ${mlResults.totalTime}ms\n`;
+    mlReport += `Best Algorithm: ${mlResults.bestModel?.algorithm || 'N/A'}\n`;
+    mlReport += `Best Accuracy: ${mlResults.bestModel?.accuracy.toFixed(4) || 'N/A'}\n\n`;
+    mlReport += `${'='.repeat(50)}\n\n`;
+    
+    mlResults.results.forEach((result: any, index: number) => {
+      mlReport += `${index + 1}. ${result.algorithm}\n`;
+      mlReport += `   Accuracy: ${result.accuracy.toFixed(4)}\n`;
+      mlReport += `   Precision: ${result.precision.toFixed(4)}\n`;
+      mlReport += `   Recall: ${result.recall.toFixed(4)}\n`;
+      mlReport += `   F1 Score: ${result.f1Score.toFixed(4)}\n`;
+      mlReport += `   ROC AUC: ${result.rocAuc?.toFixed(4) || 'N/A'}\n`;
+      mlReport += `   Cross-Validation F1: ${result.cvF1Mean.toFixed(4)} ± ${result.cvF1Std.toFixed(4)}\n`;
+      mlReport += `   Training Time: ${result.trainingTime}ms\n`;
+      mlReport += `   Prediction Time: ${result.predictionTime}ms\n\n`;
+    });
+    
+    zip.file('ml_results_report.txt', mlReport);
+  }
+  
+  // 7. README
   const readme = `DATA WRANGLING EXPORT PACKAGE\n`;
   const readmeContent = `${'='.repeat(50)}\n\n`;
   const readmeBody = `This package contains all outputs from the data wrangling process.\n\n`;
@@ -137,10 +181,12 @@ export const exportCompletePackage = async (
   const readmeList3 = `- data_dictionary.csv: Column documentation in CSV format\n`;
   const readmeList4 = `- processing_log.txt: Step-by-step processing history\n`;
   const readmeList5 = `- summary_report.txt: Comprehensive project summary\n`;
-  const readmeList6 = `- README.txt: This file\n\n`;
+  const readmeList6 = mlResults ? `- ml_results.csv: Machine learning results (${mlResults.results.length} algorithms)\n` : '';
+  const readmeList7 = mlResults ? `- ml_results_report.txt: Detailed ML performance report\n` : '';
+  const readmeList8 = `- README.txt: This file\n\n`;
   const readmeFooter = `Generated: ${new Date().toLocaleString()}\n`;
   
-  zip.file('README.txt', readme + readmeContent + readmeBody + readmeFiles + readmeList + readmeList2 + readmeList3 + readmeList4 + readmeList5 + readmeList6 + readmeFooter);
+  zip.file('README.txt', readme + readmeContent + readmeBody + readmeFiles + readmeList + readmeList2 + readmeList3 + readmeList4 + readmeList5 + readmeList6 + readmeList7 + readmeList8 + readmeFooter);
   
   // Generate and download ZIP
   const blob = await zip.generateAsync({ type: 'blob' });

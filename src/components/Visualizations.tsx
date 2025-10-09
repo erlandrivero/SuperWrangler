@@ -74,7 +74,7 @@ const Visualizations = ({ data }: { data: any[] }) => {
     return <p>Load data to see visualizations.</p>;
   }
 
-  // Check if wine-specific columns exist
+  // Check if common dataset columns exist
   const hasQuality = 'quality' in data[0];
   const hasAlcohol = 'alcohol' in data[0];
   const hasType = 'type' in data[0];

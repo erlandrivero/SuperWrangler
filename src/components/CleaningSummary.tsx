@@ -39,7 +39,7 @@ const CleaningSummary = ({ items, data }: { items: { key: string, title: string 
       )}
 
       {/* Feature Engineering Status */}
-      {(data.featureType === 'wine-specific' || data.featureType === 'generic') && data.engineeredFeatures > 0 && (
+      {(data.featureType === 'dataset-specific' || data.featureType === 'generic') && data.engineeredFeatures > 0 && (
         <div style={{ 
           marginBottom: '1rem', 
           padding: '0.75rem', 

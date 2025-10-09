@@ -12,12 +12,17 @@ import CleaningSummary from './components/CleaningSummary';
 import ProcessingLog from './components/ProcessingLog';
 import ColumnAnalysis from './components/ColumnAnalysis';
 import BalanceCheck from './components/BalanceCheck';
+import MLModeSelector from './components/MLModeSelector';
+import QuickML from './components/QuickML';
+import AdvancedML from './components/AdvancedML';
+import ModelResults from './components/ModelResults';
 import { cleanAndMerge, cleanSingleDataset, engineerFeatures, encodeCategoricalColumns, addBinnedColumns } from './utils/dataProcessing';
 import { fetchOpenMLData } from './utils/openmlApi';
 import { analyzeColumns } from './utils/columnAnalysis';
 import { checkBalance } from './utils/statistics';
 import type { ColumnAnalysis as ColumnAnalysisType } from './utils/columnAnalysis';
 import type { BalanceReport } from './utils/statistics';
+import type { MLSummary } from './types/ml';
 
 interface LogEntry {
   step: number;
@@ -45,6 +50,10 @@ function App() {
   const [includeEngineeredColumns, setIncludeEngineeredColumns] = useState(true);
   const [fullDataWithEngineered, setFullDataWithEngineered] = useState<any[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
+  
+  // ML State
+  const [mlMode, setMLMode] = useState<'selection' | 'quick' | 'advanced'>('selection');
+  const [mlResults, setMLResults] = useState<MLSummary | null>(null);
 
   const handleRefresh = () => {
     setCleanedData([]);
@@ -61,6 +70,8 @@ function App() {
     setIncludeEngineeredColumns(true);
     setFullDataWithEngineered([]);
     setDataVersion(0);
+    setMLMode('selection');
+    setMLResults(null);
     setResetKey(prev => prev + 1); // Force DataImport to remount
   };
 
@@ -501,9 +512,78 @@ function App() {
           <DataDictionary key={`dict-${dataVersion}`} data={cleanedData} />
         </div>
 
+        {cleanedData.length > 0 && balanceReport && (
+          <div className="card">
+            <h2>🤖 Machine Learning</h2>
+            
+            {mlMode === 'selection' && !mlResults && (
+              <MLModeSelector
+                onSelectMode={(mode) => setMLMode(mode)}
+                datasetSize={cleanedData.length}
+                data={cleanedData}
+                targetColumn={balanceReport.targetColumn}
+              />
+            )}
+
+            {mlMode === 'quick' && !mlResults && (
+              <QuickML
+                data={cleanedData}
+                targetColumn={balanceReport.targetColumn}
+                onComplete={(results) => {
+                  setMLResults(results);
+                  const newLog: LogEntry = {
+                    step: processingLogs.length + 1,
+                    name: 'Quick ML Complete',
+                    timestamp: new Date().toLocaleTimeString(),
+                    status: 'success',
+                    details: `Trained ${results.results.length} algorithms. Best: ${results.bestModel.algorithm} (F1: ${(results.bestModel.f1Score * 100).toFixed(2)}%)`,
+                    metrics: {
+                      after: `${results.successCount} successful, ${results.failureCount} failed`
+                    }
+                  };
+                  setProcessingLogs([...processingLogs, newLog]);
+                }}
+                onBack={() => setMLMode('selection')}
+              />
+            )}
+
+            {mlMode === 'advanced' && !mlResults && (
+              <AdvancedML
+                data={cleanedData}
+                targetColumn={balanceReport.targetColumn}
+                onComplete={(results) => {
+                  setMLResults(results);
+                  const newLog: LogEntry = {
+                    step: processingLogs.length + 1,
+                    name: 'Advanced ML Complete',
+                    timestamp: new Date().toLocaleTimeString(),
+                    status: 'success',
+                    details: `Trained ${results.results.length} algorithms. Best: ${results.bestModel.algorithm} (F1: ${(results.bestModel.f1Score * 100).toFixed(2)}%)`,
+                    metrics: {
+                      after: `${results.successCount} successful, ${results.failureCount} failed`
+                    }
+                  };
+                  setProcessingLogs([...processingLogs, newLog]);
+                }}
+                onBack={() => setMLMode('selection')}
+              />
+            )}
+
+            {mlResults && (
+              <ModelResults
+                results={mlResults}
+                onReset={() => {
+                  setMLResults(null);
+                  setMLMode('selection');
+                }}
+              />
+            )}
+          </div>
+        )}
+
         <div className="card">
           <h2>📦 Export Data</h2>
-          <ExportSection data={cleanedData} summary={cleaningSummary} processingLogs={processingLogs} />
+          <ExportSection data={cleanedData} summary={cleaningSummary} processingLogs={processingLogs} mlResults={mlResults} />
         </div>
       </main>
     </div>

@@ -84,7 +84,7 @@ export const fetchOpenMLData = async (id: string) => {
 
     // 2. Fetch the ARFF file content
     const arffResponse = await axios.get(arffUrl, {
-      timeout: 60000, // 60 second timeout for larger files
+      timeout: 120000, // 120 second timeout for larger files (2 minutes)
     });
     
     console.log(`[Perf] Fetched ARFF file for ID ${id} in ${performance.now() - startTime}ms`);
@@ -111,7 +111,7 @@ export const fetchOpenMLData = async (id: string) => {
     
     if (axios.isAxiosError(error)) {
       if (error.code === 'ECONNABORTED') {
-        throw new Error('Request timeout: The dataset is taking too long to load. Please try again or use a smaller dataset.');
+        throw new Error('Request timeout: The dataset is too large (>2 minutes to download). Please try a smaller dataset or use CSV upload instead.');
       }
       if (error.code === 'ERR_NETWORK') {
         throw new Error('Network error: Unable to connect to OpenML. Please check your internet connection.');
