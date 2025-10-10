@@ -35,19 +35,18 @@ class ExtraTreeClassifierWrapper(ExtraTreesClassifier):
         super().__init__(n_estimators=1, **kwargs)
 
 def get_models():
-    """Returns a dictionary of all models to test (22 total)."""
+    """Returns a dictionary of top 10 fast and effective models (optimized for free tier)."""
     
-    # Define base estimators for ensemble models
+    # Base estimators for ensemble models
     base_lr = LogisticRegression(max_iter=1000, random_state=42)
     base_rf = RandomForestClassifier(n_estimators=50, random_state=42, n_jobs=-1)
     base_nb = GaussianNB()
     
     return {
-        # Linear Models (4)
+        # Linear Models (3) - Fast and effective
         "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
         "Ridge Classifier": RidgeClassifier(random_state=42),
         "SGD Classifier": SGDClassifier(random_state=42, max_iter=1000),
-        "Perceptron": Perceptron(random_state=42, max_iter=1000),
         
         # Tree-Based Models (4)
         "Decision Tree": DecisionTreeClassifier(random_state=42),
@@ -261,6 +260,106 @@ def train_all_models(data, target_column):
     
     # Return minimal response to avoid payload size issues
     return {
+        "results": results,
+        "bestModel": best_model,
+        "totalTime": total_time,
+        "successCount": len(successful_results),
+        "failureCount": len(results) - len(successful_results)
+    }
+
+def train_all_models_streaming(data, target_column):
+    """Generator function that yields results as each model completes."""
+    print("\n" + "="*50)
+    print("Starting Advanced ML Training (Streaming)")
+    print("="*50)
+    
+    start_time = time.time()
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(data)
+    print(f"Dataset shape: {df.shape}")
+    
+    # Validate target column exists
+    if target_column not in df.columns:
+        raise ValueError(f"Target column '{target_column}' not found in data")
+    
+    # Prepare data
+    X = df.drop(columns=[target_column])
+    y = df[target_column]
+    
+    # Check if we have enough data
+    if len(X) < 10:
+        raise ValueError("Dataset too small. Need at least 10 samples.")
+    
+    # Check if target has at least 2 classes
+    unique_classes = y.nunique()
+    if unique_classes < 2:
+        raise ValueError(f"Target must have at least 2 classes. Found: {unique_classes}")
+    
+    print(f"Features: {len(X.columns)}, Classes: {unique_classes}")
+    
+    # One-hot encode categorical features
+    X_encoded = pd.get_dummies(X, drop_first=True)
+    print(f"After encoding: {X_encoded.shape[1]} features")
+    
+    # Scale features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_encoded)
+    
+    # Split data
+    try:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_scaled, y, test_size=0.20, random_state=42, stratify=y
+        )
+        print(f"Train: {len(X_train)}, Test: {len(X_test)} (stratified)")
+    except ValueError:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_scaled, y, test_size=0.20, random_state=42
+        )
+        print(f"Train: {len(X_train)}, Test: {len(X_test)} (non-stratified)")
+    
+    # Get models and train
+    models = get_models()
+    results = []
+    
+    print(f"\nTraining {len(models)} algorithms...")
+    print("-"*50)
+    
+    for idx, (name, model) in enumerate(models.items(), 1):
+        print(f"Training {name}...")
+        result = train_and_evaluate(name, model, X_train, y_train, X_test, y_test)
+        results.append(result)
+        
+        if result["status"] == "success":
+            print(f"  ✓ F1: {result['f1Score']:.4f}, Accuracy: {result['accuracy']:.4f}")
+        
+        # Yield progress update after each model
+        yield {
+            "type": "progress",
+            "current": idx,
+            "total": len(models),
+            "algorithm": name,
+            "result": result
+        }
+    
+    print("-"*50)
+    
+    # Find best model
+    successful_results = [r for r in results if r["status"] == "success"]
+    if not successful_results:
+        raise Exception("All models failed to train")
+    
+    best_model = max(successful_results, key=lambda x: x["f1Score"])
+    total_time = (time.time() - start_time) * 1000
+    
+    print(f"\n🏆 Best Model: {best_model['algorithm']}")
+    print(f"   F1-Score: {best_model['f1Score']:.4f}")
+    print(f"   Total Time: {total_time:.0f}ms")
+    print("="*50 + "\n")
+    
+    # Yield final summary
+    yield {
+        "type": "complete",
         "results": results,
         "bestModel": best_model,
         "totalTime": total_time,

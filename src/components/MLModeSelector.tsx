@@ -172,8 +172,8 @@ const MLModeSelector: React.FC<MLModeSelectorProps> = ({
           </div>
           
           <div style={{ marginBottom: '15px', color: '#555' }}>
-            <p style={{ margin: '8px 0', fontWeight: 'bold' }}>22+ algorithms</p>
-            <p style={{ margin: '8px 0' }}>10-30 seconds</p>
+            <p style={{ margin: '8px 0', fontWeight: 'bold' }}>22 algorithms</p>
+            <p style={{ margin: '8px 0' }}>1-3 minutes</p>
             <p style={{ margin: '8px 0' }}>Best accuracy</p>
             <p style={{ margin: '8px 0' }}>Includes XGBoost, LightGBM</p>
           </div>

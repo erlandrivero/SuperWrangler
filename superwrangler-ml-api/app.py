@@ -3,8 +3,16 @@ from flask_cors import CORS
 from ml_engine import train_all_models
 
 app = Flask(__name__)
-# Enable CORS for all routes and origins
-CORS(app)
+# Enable CORS for all routes and origins using the flask-cors library.
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"],
+        "expose_headers": ["Content-Type"],
+        "supports_credentials": False
+    }
+})
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
@@ -27,7 +35,7 @@ def get_algorithms():
 
 @app.route("/api/train", methods=["POST"])
 def train_models():
-    """Receives data, trains models, and returns results."""
+    """Receives data, trains models, and returns results (non-streaming)."""
     try:
         payload = request.json
         
@@ -43,7 +51,7 @@ def train_models():
         if not isinstance(data, list) or len(data) == 0:
             return jsonify({"error": "Data must be a non-empty list"}), 400
             
-        # Train models
+        # Train models (all at once)
         results = train_all_models(data, target_column)
         
         return jsonify(results), 200
@@ -54,6 +62,44 @@ def train_models():
         return jsonify({"error": f"Invalid data: {str(e)}"}), 400
     except Exception as e:
         return jsonify({"error": f"Training failed: {str(e)}"}), 500
+
+
+@app.route("/api/train-stream", methods=["POST"])
+def train_models_stream():
+    """Streams training results as each model completes using Server-Sent Events."""
+    import json
+    from ml_engine import train_all_models_streaming
+    
+    # Get request data before entering generator
+    payload = request.get_json()
+    if not payload:
+        return jsonify({"error": "No JSON payload provided"}), 400
+        
+    data = payload.get("data")
+    target_column = payload.get("targetColumn")
+    
+    if not data or not target_column:
+        return jsonify({"error": "Missing 'data' or 'targetColumn' in request"}), 400
+    
+    if not isinstance(data, list) or len(data) == 0:
+        return jsonify({"error": "Data must be a non-empty list"}), 400
+    
+    def generate():
+        try:
+            # Stream results as they complete
+            for result in train_all_models_streaming(data, target_column):
+                yield f"data: {json.dumps(result)}\n\n"
+                
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+    
+    response = app.response_class(generate(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'
+    response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
 
 if __name__ == "__main__":
     print("=" * 50)
