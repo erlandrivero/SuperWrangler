@@ -3,16 +3,8 @@ from flask_cors import CORS
 from ml_engine import train_all_models
 
 app = Flask(__name__)
-# Enable CORS for all routes and origins using the flask-cors library.
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"],
-        "expose_headers": ["Content-Type"],
-        "supports_credentials": False
-    }
-})
+# Enable CORS for all origins (public API)
+CORS(app)
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
