@@ -78,12 +78,17 @@ def train_models_stream():
     
     def generate():
         try:
+            print("[STREAM] Starting model training stream...")
             # Stream results as they complete
             for result in train_all_models_streaming(data, target_column):
                 event = f"data: {json.dumps(result)}\n\n"
+                print(f"[STREAM] Yielding event type: {result.get('type')}")
                 yield event
+            
+            print("[STREAM] Stream completed successfully")
                 
         except Exception as e:
+            print(f"[STREAM ERROR] {str(e)}")
             error_event = f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
             yield error_event
     
