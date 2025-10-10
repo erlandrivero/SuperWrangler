@@ -2,6 +2,11 @@
   command = "npm run build"
   publish = "dist"
 
+# Environment variable configuration:
+# In Netlify dashboard: Site settings > Environment variables
+# Add: VITE_ML_API_URL = "https://your-backend-name.onrender.com"
+# (Replace with your actual Render backend URL)
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
