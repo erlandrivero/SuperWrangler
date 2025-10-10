@@ -35,54 +35,55 @@ class ExtraTreeClassifierWrapper(ExtraTreesClassifier):
         super().__init__(n_estimators=1, **kwargs)
 
 def get_models():
-    """Returns a dictionary of top 10 fast and effective models (optimized for free tier)."""
+    """Returns all 22 algorithms optimized for free tier memory constraints."""
     
-    # Base estimators for ensemble models
-    base_lr = LogisticRegression(max_iter=1000, random_state=42)
-    base_rf = RandomForestClassifier(n_estimators=50, random_state=42, n_jobs=-1)
+    # Base estimators for ensemble models (smaller configurations)
+    base_lr = LogisticRegression(max_iter=500, random_state=42)
+    base_rf = RandomForestClassifier(n_estimators=20, max_depth=10, random_state=42, n_jobs=1)
     base_nb = GaussianNB()
     
     return {
-        # Linear Models (3) - Fast and effective
-        "Logistic Regression": LogisticRegression(max_iter=1000, random_state=42),
+        # Linear Models (4) - Fast and minimal memory
+        "Logistic Regression": LogisticRegression(max_iter=500, random_state=42),
         "Ridge Classifier": RidgeClassifier(random_state=42),
-        "SGD Classifier": SGDClassifier(random_state=42, max_iter=1000),
+        "SGD Classifier": SGDClassifier(random_state=42, max_iter=500),
+        "Perceptron": Perceptron(random_state=42, max_iter=500),
         
-        # Tree-Based Models (4)
-        "Decision Tree": DecisionTreeClassifier(random_state=42),
-        "Extra Tree": ExtraTreeClassifierWrapper(random_state=42),
-        "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1),
-        "Extra Trees Ensemble": ExtraTreesClassifier(n_estimators=100, random_state=42, n_jobs=-1),
+        # Tree-Based Models (4) - Reduced estimators
+        "Decision Tree": DecisionTreeClassifier(max_depth=15, random_state=42),
+        "Extra Tree": ExtraTreeClassifierWrapper(max_depth=15, random_state=42),
+        "Random Forest": RandomForestClassifier(n_estimators=50, max_depth=15, random_state=42, n_jobs=1),
+        "Extra Trees Ensemble": ExtraTreesClassifier(n_estimators=50, max_depth=15, random_state=42, n_jobs=1),
         
-        # Boosting Models (6)
-        "AdaBoost": AdaBoostClassifier(n_estimators=50, random_state=42),
-        "Gradient Boosting": GradientBoostingClassifier(n_estimators=100, random_state=42),
-        "Histogram Gradient Boosting": HistGradientBoostingClassifier(random_state=42),
-        "XGBoost": XGBClassifier(n_estimators=100, random_state=42, use_label_encoder=False, eval_metric='logloss', n_jobs=-1, verbosity=0),
-        "LightGBM": LGBMClassifier(n_estimators=100, random_state=42, n_jobs=-1, verbose=-1),
-        "CatBoost": CatBoostClassifier(iterations=100, random_state=42, verbose=0),
+        # Boosting Models (6) - Reduced iterations, single thread
+        "AdaBoost": AdaBoostClassifier(n_estimators=30, random_state=42),
+        "Gradient Boosting": GradientBoostingClassifier(n_estimators=50, max_depth=5, random_state=42),
+        "Histogram Gradient Boosting": HistGradientBoostingClassifier(max_iter=50, max_depth=10, random_state=42),
+        "XGBoost": XGBClassifier(n_estimators=50, max_depth=5, random_state=42, use_label_encoder=False, eval_metric='logloss', n_jobs=1, verbosity=0),
+        "LightGBM": LGBMClassifier(n_estimators=50, max_depth=10, num_leaves=31, random_state=42, n_jobs=1, verbose=-1),
+        "CatBoost": CatBoostClassifier(iterations=50, random_state=42, verbose=0, thread_count=1),
         
-        # Ensemble Models (3)
-        "Bagging Classifier": BaggingClassifier(n_estimators=50, random_state=42, n_jobs=-1),
+        # Ensemble Models (3) - Simplified
+        "Bagging Classifier": BaggingClassifier(n_estimators=20, random_state=42, n_jobs=1),
         "Voting Classifier": VotingClassifier(
             estimators=[('lr', base_lr), ('rf', base_rf), ('nb', base_nb)],
             voting='soft',
-            n_jobs=-1
+            n_jobs=1
         ),
         "Stacking Classifier": StackingClassifier(
             estimators=[('lr', base_lr), ('rf', base_rf), ('nb', base_nb)],
-            final_estimator=LogisticRegression(max_iter=1000),
-            n_jobs=-1
+            final_estimator=LogisticRegression(max_iter=500),
+            n_jobs=1
         ),
         
         # Support Vector Machines (2)
-        "SVC (RBF)": SVC(random_state=42, probability=True),
-        "Linear SVC": LinearSVC(random_state=42, dual=False, max_iter=2000),
+        "SVC (RBF)": SVC(random_state=42, probability=True, max_iter=500),
+        "Linear SVC": LinearSVC(random_state=42, dual=False, max_iter=1000),
         
         # Other Models (3)
-        "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5, n_jobs=-1),
+        "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5, n_jobs=1),
         "Gaussian Naive Bayes": GaussianNB(),
-        "Multi-Layer Perceptron": MLPClassifier(hidden_layer_sizes=(100,), random_state=42, max_iter=1000),
+        "Multi-Layer Perceptron": MLPClassifier(hidden_layer_sizes=(50,), random_state=42, max_iter=500),
     }
 
 def train_and_evaluate(name, model, X_train, y_train, X_test, y_test):
