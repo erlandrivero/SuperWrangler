@@ -134,8 +134,10 @@ def train_and_evaluate(name, model, X_train, y_train, X_test, y_test):
             cv_f1_mean = f1
             cv_f1_std = 0.0
         
-        # Get hyperparameters
-        hyperparameters = {k: str(v) for k, v in model.get_params().items() if not k.startswith('_')}
+        # Get hyperparameters (limit to key params only to reduce payload size)
+        all_params = model.get_params()
+        key_params = ['max_depth', 'n_estimators', 'learning_rate', 'C', 'kernel', 'n_neighbors']
+        hyperparameters = {k: str(v) for k, v in all_params.items() if k in key_params}
         
         return {
             "algorithm": name,
@@ -257,18 +259,11 @@ def train_all_models(data, target_column):
     print(f"   Total Time: {total_time:.0f}ms")
     print("="*50 + "\n")
     
+    # Return minimal response to avoid payload size issues
     return {
         "results": results,
         "bestModel": best_model,
         "totalTime": total_time,
         "successCount": len(successful_results),
-        "failureCount": len(results) - len(successful_results),
-        "datasetInfo": {
-            "samples": len(df),
-            "features": len(X.columns),
-            "featuresAfterEncoding": X_encoded.shape[1],
-            "classes": unique_classes,
-            "trainSize": len(X_train),
-            "testSize": len(X_test)
-        }
+        "failureCount": len(results) - len(successful_results)
     }
