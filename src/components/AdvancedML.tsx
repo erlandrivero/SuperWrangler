@@ -110,7 +110,7 @@ const AdvancedML: React.FC<AdvancedMLProps> = ({
           </div>
           <div>
             <strong style={{ color: '#374151' }}>Algorithms:</strong>
-            <p style={{ margin: '4px 0', color: '#6b7280' }}>22 models</p>
+            <p style={{ margin: '4px 0', color: '#6b7280' }}>15 advanced models</p>
           </div>
           <div>
             <strong style={{ color: '#374151' }}>Estimated Time:</strong>
@@ -158,7 +158,7 @@ const AdvancedML: React.FC<AdvancedMLProps> = ({
           onMouseLeave={(e) => apiStatus === 'online' && (e.currentTarget.style.background = '#6366f1')}
         >
           <span>🚀</span>
-          <span>Start Training (22 Algorithms)</span>
+          <span>Start Training (15 Advanced Algorithms)</span>
         </button>
       ) : (
         <div style={{ textAlign: 'center', padding: '20px' }}>
@@ -193,7 +193,7 @@ const AdvancedML: React.FC<AdvancedMLProps> = ({
       }}>
         <strong style={{ color: '#1e40af', fontSize: '0.875rem' }}>💡 Advanced ML Features:</strong>
         <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', color: '#1e40af', fontSize: '0.875rem', lineHeight: '1.6' }}>
-          <li>22 state-of-the-art algorithms including XGBoost, LightGBM, and CatBoost</li>
+          <li>15 advanced algorithms (excludes Quick ML models) including XGBoost, LightGBM, and CatBoost</li>
           <li>Automatic feature scaling and encoding</li>
           <li>Cross-validation for robust performance estimates</li>
           <li>Comprehensive metrics and confusion matrices</li>

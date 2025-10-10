@@ -172,14 +172,14 @@ const MLModeSelector: React.FC<MLModeSelectorProps> = ({
           </div>
           
           <div style={{ marginBottom: '15px', color: '#555' }}>
-            <p style={{ margin: '8px 0', fontWeight: 'bold' }}>22 algorithms</p>
+            <p style={{ margin: '8px 0', fontWeight: 'bold' }}>15 advanced algorithms</p>
             <p style={{ margin: '8px 0' }}>1-3 minutes</p>
             <p style={{ margin: '8px 0' }}>Best accuracy</p>
             <p style={{ margin: '8px 0' }}>Includes XGBoost, LightGBM</p>
           </div>
 
           <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '15px', padding: '10px', background: '#f9fafb', borderRadius: '4px' }}>
-            <small>All Quick ML algorithms + Gradient Boosting, XGBoost, LightGBM, CatBoost, AdaBoost, Stacking, and more</small>
+            <small>Advanced-only algorithms: Gradient Boosting, XGBoost, LightGBM, CatBoost, AdaBoost, Extra Trees, Stacking, and more (excludes Quick ML models)</small>
           </div>
 
           {/* Recommend Advanced ML for larger datasets, complex problems, or regression */}
