@@ -1,6 +1,7 @@
 import pandas as pd
 import time
 import numpy as np
+import gc
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
 from sklearn.preprocessing import StandardScaler
@@ -35,55 +36,64 @@ class ExtraTreeClassifierWrapper(ExtraTreesClassifier):
         super().__init__(n_estimators=1, **kwargs)
 
 def get_models():
-    """Returns all 22 algorithms optimized for free tier memory constraints."""
+    """
+    Returns ADVANCED models only (15 total) - MEMORY OPTIMIZED for Render.
     
-    # Base estimators for ensemble models (smaller configurations)
-    base_lr = LogisticRegression(max_iter=500, random_state=42)
-    base_rf = RandomForestClassifier(n_estimators=20, max_depth=10, random_state=42, n_jobs=1)
-    base_nb = GaussianNB()
+    EXCLUDED (already in Quick ML browser-based):
+    - Logistic Regression
+    - Decision Tree  
+    - Random Forest
+    - K-Nearest Neighbors
+    - Gaussian Naive Bayes
+    - SVC (RBF)
+    - Multi-Layer Perceptron
+    
+    INCLUDED (Advanced algorithms Quick ML can't handle):
+    - Advanced linear models (Ridge, SGD, Perceptron)
+    - Extra Tree variants
+    - All boosting models (AdaBoost, Gradient Boosting, XGBoost, LightGBM, CatBoost)
+    - Ensemble methods (Bagging, Voting, Stacking)
+    - Linear SVC
+    """
+    
+    # Define base estimators for ensemble models (memory-efficient versions)
+    base_ridge = RidgeClassifier(random_state=42)
+    base_et = ExtraTreesClassifier(n_estimators=20, max_depth=10, random_state=42, n_jobs=1)
+    base_sgd = SGDClassifier(random_state=42, max_iter=500, n_jobs=1)
     
     return {
-        # Linear Models (4) - Fast and minimal memory
-        "Logistic Regression": LogisticRegression(max_iter=500, random_state=42),
+        # Advanced Linear Models (3) - NOT in Quick ML
         "Ridge Classifier": RidgeClassifier(random_state=42),
-        "SGD Classifier": SGDClassifier(random_state=42, max_iter=500),
-        "Perceptron": Perceptron(random_state=42, max_iter=500),
+        "SGD Classifier": SGDClassifier(random_state=42, max_iter=500, n_jobs=1),
+        "Perceptron": Perceptron(random_state=42, max_iter=500, n_jobs=1),
         
-        # Tree-Based Models (4) - Reduced estimators
-        "Decision Tree": DecisionTreeClassifier(max_depth=15, random_state=42),
-        "Extra Tree": ExtraTreeClassifierWrapper(max_depth=15, random_state=42),
-        "Random Forest": RandomForestClassifier(n_estimators=50, max_depth=15, random_state=42, n_jobs=1),
-        "Extra Trees Ensemble": ExtraTreesClassifier(n_estimators=50, max_depth=15, random_state=42, n_jobs=1),
+        # Advanced Tree-Based Models (2) - Extra Trees only
+        "Extra Tree": ExtraTreeClassifierWrapper(max_depth=10, random_state=42),
+        "Extra Trees Ensemble": ExtraTreesClassifier(n_estimators=30, max_depth=10, random_state=42, n_jobs=1),
         
-        # Boosting Models (6) - Reduced iterations, single thread
+        # Boosting Models (6) - NONE in Quick ML - These are the power algorithms
         "AdaBoost": AdaBoostClassifier(n_estimators=30, random_state=42),
-        "Gradient Boosting": GradientBoostingClassifier(n_estimators=50, max_depth=5, random_state=42),
-        "Histogram Gradient Boosting": HistGradientBoostingClassifier(max_iter=50, max_depth=10, random_state=42),
-        "XGBoost": XGBClassifier(n_estimators=50, max_depth=5, random_state=42, use_label_encoder=False, eval_metric='logloss', n_jobs=1, verbosity=0),
-        "LightGBM": LGBMClassifier(n_estimators=50, max_depth=10, num_leaves=31, random_state=42, n_jobs=1, verbose=-1),
-        "CatBoost": CatBoostClassifier(iterations=50, random_state=42, verbose=0, thread_count=1),
+        "Gradient Boosting": GradientBoostingClassifier(n_estimators=30, max_depth=5, random_state=42),
+        "Histogram Gradient Boosting": HistGradientBoostingClassifier(max_iter=30, max_depth=5, random_state=42),
+        "XGBoost": XGBClassifier(n_estimators=30, max_depth=5, random_state=42, use_label_encoder=False, eval_metric='logloss', n_jobs=1, verbosity=0, tree_method='hist'),
+        "LightGBM": LGBMClassifier(n_estimators=30, max_depth=5, num_leaves=15, random_state=42, n_jobs=1, verbose=-1),
+        "CatBoost": CatBoostClassifier(iterations=30, depth=5, random_state=42, verbose=0, thread_count=1),
         
-        # Ensemble Models (3) - Simplified
+        # Ensemble Models (3) - NOT in Quick ML
         "Bagging Classifier": BaggingClassifier(n_estimators=20, random_state=42, n_jobs=1),
         "Voting Classifier": VotingClassifier(
-            estimators=[('lr', base_lr), ('rf', base_rf), ('nb', base_nb)],
+            estimators=[('ridge', base_ridge), ('et', base_et), ('sgd', base_sgd)],
             voting='soft',
             n_jobs=1
         ),
         "Stacking Classifier": StackingClassifier(
-            estimators=[('lr', base_lr), ('rf', base_rf), ('nb', base_nb)],
-            final_estimator=LogisticRegression(max_iter=500),
+            estimators=[('ridge', base_ridge), ('et', base_et), ('sgd', base_sgd)],
+            final_estimator=RidgeClassifier(),
             n_jobs=1
         ),
         
-        # Support Vector Machines (2)
-        "SVC (RBF)": SVC(random_state=42, probability=True, max_iter=500),
+        # Linear SVC (1) - More advanced than basic SVC in Quick ML
         "Linear SVC": LinearSVC(random_state=42, dual=False, max_iter=1000),
-        
-        # Other Models (3)
-        "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5, n_jobs=1),
-        "Gaussian Naive Bayes": GaussianNB(),
-        "Multi-Layer Perceptron": MLPClassifier(hidden_layer_sizes=(50,), random_state=42, max_iter=500),
     }
 
 def train_and_evaluate(name, model, X_train, y_train, X_test, y_test):
@@ -124,20 +134,18 @@ def train_and_evaluate(name, model, X_train, y_train, X_test, y_test):
         except:
             roc_auc = None
         
-        # Cross-validation
+        # Cross-validation - REDUCED to 3-fold and sequential to save memory
         try:
-            cv_scores = cross_val_score(model, X_train, y_train, cv=min(5, len(X_train) // 2), 
-                                       scoring='f1_weighted', n_jobs=-1)
+            cv_scores = cross_val_score(model, X_train, y_train, cv=min(3, len(X_train) // 2), 
+                                       scoring='f1_weighted', n_jobs=1)
             cv_f1_mean = cv_scores.mean()
             cv_f1_std = cv_scores.std()
         except:
             cv_f1_mean = f1
             cv_f1_std = 0.0
         
-        # Get hyperparameters (limit to key params only to reduce payload size)
-        all_params = model.get_params()
-        key_params = ['max_depth', 'n_estimators', 'learning_rate', 'C', 'kernel', 'n_neighbors']
-        hyperparameters = {k: str(v) for k, v in all_params.items() if k in key_params}
+        # Get hyperparameters
+        hyperparameters = {k: str(v) for k, v in model.get_params().items() if not k.startswith('_')}
         
         return {
             "algorithm": name,
@@ -259,19 +267,30 @@ def train_all_models(data, target_column):
     print(f"   Total Time: {total_time:.0f}ms")
     print("="*50 + "\n")
     
-    # Return minimal response to avoid payload size issues
     return {
         "results": results,
         "bestModel": best_model,
         "totalTime": total_time,
         "successCount": len(successful_results),
-        "failureCount": len(results) - len(successful_results)
+        "failureCount": len(results) - len(successful_results),
+        "datasetInfo": {
+            "samples": len(df),
+            "features": len(X.columns),
+            "featuresAfterEncoding": X_encoded.shape[1],
+            "classes": unique_classes,
+            "trainSize": len(X_train),
+            "testSize": len(X_test)
+        }
     }
 
+
 def train_all_models_streaming(data, target_column):
-    """Generator function that yields results as each model completes."""
+    """
+    Generator function that yields results ONE MODEL AT A TIME - MEMORY OPTIMIZED.
+    Each model is trained, evaluated, yielded, then garbage collected before the next.
+    """
     print("\n" + "="*50)
-    print("Starting Advanced ML Training (Streaming)")
+    print("Starting STREAMING Advanced ML Training (Memory Optimized)")
     print("="*50)
     
     start_time = time.time()
@@ -303,55 +322,87 @@ def train_all_models_streaming(data, target_column):
     X_encoded = pd.get_dummies(X, drop_first=True)
     print(f"After encoding: {X_encoded.shape[1]} features")
     
-    # Scale features
+    # Scale features (important for linear models)
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X_encoded)
     
-    # Split data
+    # Split data (80/20 train/test split with stratification)
     try:
         X_train, X_test, y_train, y_test = train_test_split(
             X_scaled, y, test_size=0.20, random_state=42, stratify=y
         )
         print(f"Train: {len(X_train)}, Test: {len(X_test)} (stratified)")
     except ValueError:
+        # If stratification fails (too few samples per class), split without it
         X_train, X_test, y_train, y_test = train_test_split(
             X_scaled, y, test_size=0.20, random_state=42
         )
         print(f"Train: {len(X_train)}, Test: {len(X_test)} (non-stratified)")
     
-    # Get models and train
+    # Yield initial metadata
+    yield {
+        "type": "start",
+        "totalModels": 22,
+        "datasetInfo": {
+            "samples": len(df),
+            "features": len(X.columns),
+            "featuresAfterEncoding": X_encoded.shape[1],
+            "classes": unique_classes,
+            "trainSize": len(X_train),
+            "testSize": len(X_test)
+        }
+    }
+    
+    # Get models and train ONE AT A TIME
     models = get_models()
     results = []
+    successful_count = 0
+    failure_count = 0
     
-    print(f"\nTraining {len(models)} algorithms...")
+    print(f"\nTraining {len(models)} algorithms (ONE AT A TIME)...")
     print("-"*50)
     
     for idx, (name, model) in enumerate(models.items(), 1):
-        print(f"Training {name}...")
+        print(f"[{idx}/{len(models)}] Training {name}...")
+        
+        # Train and evaluate THIS model
         result = train_and_evaluate(name, model, X_train, y_train, X_test, y_test)
+        
+        # Track results
         results.append(result)
-        
         if result["status"] == "success":
+            successful_count += 1
             print(f"  ✓ F1: {result['f1Score']:.4f}, Accuracy: {result['accuracy']:.4f}")
+        else:
+            failure_count += 1
+            print(f"  ✗ Failed: {result.get('error', 'Unknown error')}")
         
-        # Yield progress update after each model
+        # Yield THIS model's result immediately
         yield {
-            "type": "progress",
-            "current": idx,
-            "total": len(models),
-            "algorithm": name,
+            "type": "model_complete",
+            "modelIndex": idx,
+            "totalModels": len(models),
             "result": result
         }
+        
+        # CRITICAL: Force garbage collection to free memory before next model
+        del model
+        gc.collect()
     
     print("-"*50)
     
     # Find best model
     successful_results = [r for r in results if r["status"] == "success"]
     if not successful_results:
-        raise Exception("All models failed to train")
+        yield {
+            "type": "error",
+            "error": "All models failed to train"
+        }
+        return
     
     best_model = max(successful_results, key=lambda x: x["f1Score"])
-    total_time = (time.time() - start_time) * 1000
+    
+    total_time = (time.time() - start_time) * 1000  # Convert to ms
     
     print(f"\n🏆 Best Model: {best_model['algorithm']}")
     print(f"   F1-Score: {best_model['f1Score']:.4f}")
@@ -359,17 +410,14 @@ def train_all_models_streaming(data, target_column):
     print("="*50 + "\n")
     
     # Yield final summary
-    final_summary = {
+    yield {
         "type": "complete",
         "results": results,
         "bestModel": best_model,
         "totalTime": total_time,
-        "successCount": len(successful_results),
-        "failureCount": len(results) - len(successful_results)
+        "successCount": successful_count,
+        "failureCount": failure_count
     }
     
-    print(f"[STREAMING] Sending final summary: {len(results)} results, best: {best_model['algorithm']}")
-    yield final_summary
-    
-    # Small delay to ensure final event is flushed
-    time.sleep(0.1)
+    # Final cleanup
+    gc.collect()
