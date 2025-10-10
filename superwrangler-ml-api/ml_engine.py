@@ -359,7 +359,7 @@ def train_all_models_streaming(data, target_column):
     print("="*50 + "\n")
     
     # Yield final summary
-    yield {
+    final_summary = {
         "type": "complete",
         "results": results,
         "bestModel": best_model,
@@ -367,3 +367,9 @@ def train_all_models_streaming(data, target_column):
         "successCount": len(successful_results),
         "failureCount": len(results) - len(successful_results)
     }
+    
+    print(f"[STREAMING] Sending final summary: {len(results)} results, best: {best_model['algorithm']}")
+    yield final_summary
+    
+    # Small delay to ensure final event is flushed
+    time.sleep(0.1)

@@ -80,17 +80,21 @@ def train_models_stream():
         try:
             # Stream results as they complete
             for result in train_all_models_streaming(data, target_column):
-                yield f"data: {json.dumps(result)}\n\n"
+                event = f"data: {json.dumps(result)}\n\n"
+                yield event
                 
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            error_event = f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+            yield error_event
     
     response = app.response_class(generate(), mimetype='text/event-stream')
     response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
     response.headers['X-Accel-Buffering'] = 'no'
     response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    response.direct_passthrough = False
     return response
 
 if __name__ == "__main__":
